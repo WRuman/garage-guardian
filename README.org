@@ -1,0 +1,70 @@
+* Garage Status System
+** Features
+- Detect door open/closed
+- Reporting of door status over time
+- Temperature reporting for garage interior
+** Future Work :phase2:
+- Occupancy detection via PIR sensor
+- Door control
+- Occupancy detection via bluetooth LE (if the garage controller module has the
+  capability, like the ItsyBitsy nRF52840). Could also be a useful door control.
+* Using a Pico
+The Raspberry Pi Pico microcontroller is actually available at a reasonable
+price at the time of writing. Since the radio
+modules used for this project are somewhat standalone, the primary
+microcontroller does not need any radios of its own and we can use a "plain" Pico.
+** Alpine Doesn't Work (yet)
+Tried this first, ran into issues with GCC.
+The cross compilation we want to do is only supported in Alpine edge at the time
+of writing, while current is 3.17. So I guess we're going with Debian!
+** SDK Setup
+The getting started guide is available here:
+https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf.
+
+A docker file is included in the ~src~ directory that will populate a plain
+Debian linux container with the necessary libraries and toolchain to complete a
+build.
+
+Once you have a builder container set up, clone it and give it a name.
+To do this, determine the container's current ID with
+~docker ps -a~, then run ~docker commit <container hash> <friendly name, like
+debian-for-pico>~.
+
+*** Copy code for pico into container
+Assuming this configuration as a precondition:
+
+#+begin_src sh
+% docker ps -a
+CONTAINER ID   IMAGE                  COMMAND        NAMES
+a750ed171000   debian-for-pico        "/bin/sh"      debian-builder
+#+end_src
+
+1. Attach a shell to the running container with ~docker exec -it debian-builder /bin/sh~.
+2. Copy the contents of the pico source directory into the container with
+   ~docker cp pico/src/. debian-builder:/home/builder/garage-guardian~. Note the trailling
+   dot (.) indicating /copy the contents, not the directory/.
+3. Within the container ~cp /home/builder/pico-sdk/external/pico_sdk_import.cmake /home/builder/garage-guardian~
+   1. ~cd /home/builder/garage-guardian~.
+   2. ~mkdir build && cd build && cmake -DPICO_SDK_PATH=/home/builder/pico-sdk ..~.
+   3. ~make~, watch the fireworks.
+4. Upon successful build, ~docker cp <container name>:/home/builder/garage-guardian/build/garage_guardian.uf2 <some place on host>~
+
+*** Using Named Volumes
+To use volumes, you can do something like this:
+#+begin_src sh
+docker run --name debian-builder -v garage-guardian/src:/home/builder/garage-guardian -it --detach debian-for-pico /bin/sh
+#+end_src
+to run it with mounted volumes.
+** Door Switch Reading
+Using GPIO in pullup mode, set as an input, we can read when it's pulled low by
+the door switch.
+
+- Switch lead 1 -> 1k resistor -> ground
+- GPIO -> switch lead 2
+
+The GPIO initialization code looks like this:
+#+begin_src c++
+gpio_init(SENSE_PIN);
+gpio_set_dir(SENSE_PIN, GPIO_IN);
+gpio_pull_up(SENSE_PIN);
+#+end_src
