@@ -68,3 +68,15 @@ gpio_init(SENSE_PIN);
 gpio_set_dir(SENSE_PIN, GPIO_IN);
 gpio_pull_up(SENSE_PIN);
 #+end_src
+
+* Using and ESP8266
+Small, cheap, widely available. Using an ESP8266 solves the issue of bridging
+between a LAN and the 433 MHz radio pair. The receiving radio will deliver data
+to a host on the network, or send notifications via email directly to a delivery
+server.
+
+A good reason to go with an ESP8266 is that it's supported by the Radiohead
+library for the radio pair we're using. The pico on the other hand has
+incomplete support from Radiohead and would require a custom implementation.
+While this is doable with enough investigation and time, it will add
+significantly to the project's complexity.
